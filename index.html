@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>منصة Rash التعليمية</title>
+    <!-- مكتبات Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+
+    <style>
+        :root {
+            --primary: #1877f2;
+            --bg: #f0f2f5;
+            --card-bg: #ffffff;
+            --text: #1c1e21;
+        }
+        body.dark-mode {
+            --primary: #2d88ff;
+            --bg: #18191a;
+            --card-bg: #242526;
+            --text: #e4e6eb;
+        }
+        body {
+            font-family: 'Cairo', Tahoma, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 0;
+            direction: rtl;
+            transition: background 0.3s, color 0.3s;
+        }
+        header {
+            background-color: var(--primary);
+            color: white;
+            padding: 12px 20px;
+            text-align: center;
+            font-size: 22px;
+            font-weight: bold;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .container {
+            max-width: 650px;
+            margin: 20px auto;
+            background: var(--card-bg);
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .nav-tabs {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 20px;
+        }
+        .tab-btn {
+            flex: 1;
+            padding: 10px;
+            background: #e4e6eb;
+            border: none;
+            border-radius: 6px;
+            font-weight: bold;
+            cursor: pointer;
+            color: #333;
+            font-size: 14px;
+        }
+        .tab-btn.active {
+            background: var(--primary);
+            color: white;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input, select, textarea {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ccd0d5;
+            border-radius: 6px;
+            font-size: 15px;
+            box-sizing: border-box;
+            background: var(--card-bg);
+            color: var(--text);
+        }
+        button {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 12px;
+            width: 100%;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .hidden { display: none !important; }
+        
+        /* المنشورات */
+        .post-card {
+            background: var(--card-bg);
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+            position: relative;
+        }
+        .badge {
+            background-color: #e41e3f;
+            color: white;
+            font-size: 11px;
+            padding: 2px 6px;
+            border-radius: 4px;
+            margin-right: 8px;
+        }
+        .badge-student { background-color: #31a24c; }
+        .badge-assistant { background-color: #f7b928; color: #000; }
+
+        .delete-btn {
+            background-color: #e41e3f;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            font-size: 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            float: left;
+        }
+        .comments-section {
+            border-top: 1px solid #eee;
+            padding-top: 10px;
+            margin-top: 10px;
+        }
+        .comment-item {
+            background: rgba(0,0,0,0.05);
+            padding: 8px 12px;
+            border-radius: 6px;
+            margin-bottom: 6px;
+            font-size: 14px;
+        }
+        .quiz-option {
+            margin: 8px 0;
+            padding: 10px;
+            background: rgba(0,0,0,0.03);
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        .leaderboard-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <span>منصة Rash التعليمية</span>
+        <button onclick="toggleDarkMode()" style="width: auto; padding: 6px 12px; font-size: 12px; background: rgba(255,255,255,0.2);">🌙 الوضع</button>
+    </header>
+
+    <!-- تسجيل الدخول -->
+    <div class="container" id="loginContainer">
+        <h2>تسجيل الدخول للمنصة</h2>
+        <div class="form-group">
+            <label>اسمك :</label>
+            <input type="text" id="inputName" placeholder="اكتب اسمك..." />
+        </div>
+        <div class="form-group">
+            <label>صفْتُك:</label>
+            <select id="inputRole" onchange="checkRoleSelection()">
+                <option value="student">طالب 👨‍🎓</option>
+                <option value="teacher">مدرس 👨‍🏫</option>
+                <option value="assistant">مساعد مدرس 👨‍💼</option>
+            </select>
+        </div>
+        <div class="form-group hidden" id="teacherCodeGroup">
+            <label>كود التحقق (250746):</label>
+            <input type="password" id="inputTeacherCode" placeholder="أدخل كود المدرس أو المساعد..." />
+        </div>
+        <button onclick="loginToPlatform()">دخول المنصة</button>
+    </div>
+
+    <!-- واجهة المنصة الرئيسية -->
+    <div class="container hidden" id="platformContainer">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+            <h3 id="welcomeMsg" style="margin: 0; color: var(--primary);"></h3>
+            <button onclick="location.reload()" style="width: auto; background-color: #e41e3f; padding: 6px 12px; font-size: 14px;">خروج</button>
+        </div>
+
+        <!-- التبويبات -->
+        <div class="nav-tabs">
+            <button class="tab-btn active" onclick="switchTab('feed')">📖 الدروس</button>
+            <button class="tab-btn" onclick="switchTab('quizzes')">📝 الامتحانات</button>
+            <button class="tab-btn" onclick="switchTab('leaderboard')">🏆 الأوائل</button>
+        </div>
+
+        <!-- 1. قسم الدروس -->
+        <div id="tab-feed">
+            <div class="container hidden" id="teacherPostBox" style="background: rgba(0,0,0,0.02); border: 1px dashed #ccd0d5; margin: 0 0 20px 0;">
+                <h4 style="margin-top:0;">إضافة درس جديد:</h4>
+                <div class="form-group">
+                    <textarea id="postContent" rows="3" placeholder="اكتب محتوى الشرح أو الدرس هنا..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label style="font-size: 13px; color: #606770;">اختر فيديو أو صورة:</label>
+                    <input type="file" id="mediaFile" accept="image/*,video/*" />
+                </div>
+                <button onclick="publishPost()">نشر الدرس للجميع</button>
+            </div>
+
+            <h3>حائط المنصة والدروس:</h3>
+            <div id="postsFeed"><p style="text-align: center;">جاري التحميل...</p></div>
+        </div>
+
+        <!-- 2. قسم الامتحانات -->
+        <div id="tab-quizzes" class="hidden">
+            <div class="container hidden" id="addQuizBox" style="background: rgba(0,0,0,0.02); border: 1px dashed #ccd0d5; margin: 0 0 20px 0;">
+                <h4>إضافة سؤال كويز:</h4>
+                <input type="text" id="quizQuestion" placeholder="السؤال..." style="margin-bottom:8px;">
+                <input type="text" id="optA" placeholder="الخيار الأول..." style="margin-bottom:8px;">
+                <input type="text" id="optB" placeholder="الخيار الثاني..." style="margin-bottom:8px;">
+                <select id="correctOpt" style="margin-bottom:8px;">
+                    <option value="A">الخيار الأول صحيح</option>
+                    <option value="B">الخيار الثاني صحيح</option>
+                </select>
+                <button onclick="addQuizQuestion()">نشر السؤال</button>
+            </div>
+            <h3>الامتحانات المتاحة:</h3>
+            <div id="quizList"></div>
+        </div>
+
+        <!-- 3. قائمة الأوائل -->
+        <div id="tab-leaderboard" class="hidden">
+            <h3>🏆 قائمة المتفوقين:</h3>
+            <div id="leaderboardList"></div>
+        </div>
+
+    </div>
+
+    <script>
+        const firebaseConfig = {
+          apiKey: "AIzaSyC2qgNuYR-0pVOxjus8mFbGGL42yuyR9lw",
+          authDomain: "z-pro-1016d.firebaseapp.com",
+          databaseURL: "https://z-pro-1016d-default-rtdb.firebaseio.com",
+          projectId: "z-pro-1016d",
+          storageBucket: "z-pro-1016d.firebasestorage.app",
+          messagingSenderId: "551643368987",
+          appId: "1:551643368987:web:35676e46bf0d0571fbb2be",
+          measurementId: "G-2Y46LHQ41W"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        let currentUser = { name: "", role: "" };
+
+        function toggleDarkMode() { document.body.classList.toggle('dark-mode'); }
+        function checkRoleSelection() {
+            const role = document.getElementById('inputRole').value;
+            const codeGroup = document.getElementById('teacherCodeGroup');
+            if (role === 'teacher' || role === 'assistant') {
+                codeGroup.classList.remove('hidden');
+            } else {
+                codeGroup.classList.add('hidden');
+            }
+        }
+
+        function loginToPlatform() {
+            const name = document.getElementById('inputName').value.trim();
+            const role = document.getElementById('inputRole').value;
+            const code = document.getElementById('inputTeacherCode').value.trim();
+
+            if (name === "") { alert("أدخل اسمك!"); return; }
+            if ((role === 'teacher' || role === 'assistant') && code !== "250746") {
+                alert("كود التحقق غير صحيح!"); return;
+            }
+
+            currentUser.name = name;
+            currentUser.role = role;
+
+            document.getElementById('loginContainer').classList.add('hidden');
+            document.getElementById('platformContainer').classList.remove('hidden');
+            document.getElementById('welcomeMsg').textContent = `أهلاً، ${name} (${role === 'teacher' ? 'مدرس 👨‍🏫' : role === 'assistant' ? 'مساعد 👨‍💼' : 'طالب 👨‍🎓'})`;
+
+            if (role === 'teacher' || role === 'assistant') {
+                document.getElementById('teacherPostBox').classList.remove('hidden');
+                document.getElementById('addQuizBox').classList.remove('hidden');
+            }
+
+            loadPosts();
+            loadQuizzes();
+            loadLeaderboard();
+        }
+
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById('tab-feed').classList.add('hidden');
+            document.getElementById('tab-quizzes').classList.add('hidden');
+            document.getElementById('tab-leaderboard').classList.add('hidden');
+
+            document.getElementById(`tab-${tabName}`).classList.remove('hidden');
+            event.target.classList.add('active');
+        }
+
+        // --- المنشورات وحذفها ---
+        function publishPost() {
+            const content = document.getElementById('postContent').value.trim();
+            const fileInput = document.getElementById('mediaFile');
+            if (content === "" && fileInput.files.length === 0) { alert("أدخل محتوى أو اختر ملف!"); return; }
+
+            if (fileInput.files.length > 0) {
+                const reader = new FileReader();
+                reader.onload = e => savePost(content, e.target.result, fileInput.files[0].type);
+                reader.readAsDataURL(fileInput.files[0]);
+            } else { savePost(content, "", ""); }
+        }
+
+        function savePost(content, media, type) {
+            db.ref('rash_posts').push({
+                author: currentUser.name, role: currentUser.role, content, media, fileType: type, timestamp: Date.now()
+            }).then(() => {
+                document.getElementById('postContent').value = "";
+                document.getElementById('mediaFile').value = "";
+                alert("تم النشر بنجاح!");
+            });
+        }
+
+        function deletePost(postId) {
+            if(confirm("هل أنت متأكد من حذف هذا الدرس/المنشور؟")) {
+                db.ref(`rash_posts/${postId}`).remove().then(() => {
+                    db.ref(`rash_comments/${postId}`).remove();
+                    alert("تم الحذف بنجاح!");
+                });
+            }
+        }
+
+        function loadPosts() {
+            db.ref('rash_posts').on('value', (snapshot) => {
+                const feed = document.getElementById('postsFeed');
+                feed.innerHTML = "";
+                const data = snapshot.val();
+                if (!data) { feed.innerHTML = '<p style="text-align: center;">لا توجد منشورات.</p>'; return; }
+
+                Object.entries(data).reverse().forEach(([postId, post]) => {
+                    const card = document.createElement('div');
+                    card.className = 'post-card';
+                    
+                    let mediaHtml = "";
+                    if (post.media) {
+                        if (post.fileType && post.fileType.startsWith('video')) {
+                            mediaHtml = `<video controls width="100%"><source src="${post.media}" type="${post.fileType}"></video>`;
+                        } else if (post.fileType && post.fileType.startsWith('image')) {
+                            mediaHtml = `<img src="${post.media}" style="max-width:100%; border-radius:6px;">`;
+                        }
+                    }
+
+                    let deleteBtnHtml = "";
+                    if (currentUser.role === 'teacher' || currentUser.role === 'assistant') {
+                        deleteBtnHtml = `<button class="delete-btn" onclick="deletePost('${postId}')">🗑️ حذف</button>`;
+                    }
+
+                    let badgeClass = post.role === 'teacher' ? '' : (post.role === 'assistant' ? 'badge-assistant' : 'badge-student');
+                    let roleText = post.role === 'teacher' ? 'مدرس 👨‍🏫' : (post.role === 'assistant' ? 'مساعد 👨‍💼' : 'طالب 👨‍🎓');
+
+                    card.innerHTML = `
+                        ${deleteBtnHtml}
+                        <div><strong>${post.author}</strong> <span class="badge ${badgeClass}">${roleText}</span></div>
+                        <p style="margin-top:10px;">${post.content ? post.content.replace(/\n/g, '<br>') : ''}</p>
+                        ${mediaHtml}
+                        <div class="comments-section">
+                            <h4>التعليقات:</h4>
+                            <div id="comments-${postId}"></div>
+                            <div class="comment-input-box" style="display:flex; gap:5px; margin-top:8px;">
+                                <input type="text" id="comment-text-${postId}" placeholder="اكتب تعليقك..." style="flex:1;" />
+                                <button onclick="sendComment('${postId}')" style="width:80px;">إرسال</button>
+                            </div>
+                        </div>
+                    `;
+                    feed.appendChild(card);
+                    loadComments(postId);
+                });
+            });
+        }
+
+        function sendComment(postId) {
+            const input = document.getElementById(`comment-text-${postId}`);
+            if (input.value.trim() === "") return;
+            db.ref(`rash_comments/${postId}`).push({
+                author: currentUser.name, text: input.value.trim()
+            }).then(() => { input.value = ""; });
+        }
+
+        function loadComments(postId) {
+            db.ref(`rash_comments/${postId}`).on('value', (snapshot) => {
+                const container = document.getElementById(`comments-${postId}`);
+                container.innerHTML = "";
+                const data = snapshot.val();
+                if (data) {
+                    Object.values(data).forEach(comm => {
+                        const div = document.createElement('div');
+                        div.className = 'comment-item';
+                        div.innerHTML = `<strong>${comm.author}:</strong> ${comm.text}`;
+                        container.appendChild(div);
+                    });
+                }
+            });
+        }
+
+        // --- الكويزات والأوائل ---
+        function addQuizQuestion() {
+            const q = document.getElementById('quizQuestion').value.trim();
+            const a = document.getElementById('optA').value.trim();
+            const b = document.getElementById('optB').value.trim();
+            const correct = document.getElementById('correctOpt').value;
+            if(!q || !a || !b) { alert("أكمل البيانات!"); return; }
+            db.ref('rash_quizzes').push({ question: q, optA: a, optB: b, correct }).then(() => {
+                alert("تم إضافة الكويز!");
+                document.getElementById('quizQuestion').value = "";
+                document.getElementById('optA').value = "";
+                document.getElementById('optB').value = "";
+            });
+        }
+
+        function loadQuizzes() {
+            db.ref('rash_quizzes').on('value', (snapshot) => {
+                const container = document.getElementById('quizList');
+                container.innerHTML = "";
+                const data = snapshot.val();
+                if(!data) { container.innerHTML = "<p>لا توجد امتحانات.</p>"; return; }
+                Object.entries(data).forEach(([qId, q]) => {
+                    const card = document.createElement('div');
+                    card.className = 'post-card';
+                    card.innerHTML = `
+                        <h4>${q.question}</h4>
+                        <div class="quiz-option" onclick="answerQuiz('${q.correct}', 'A')">أ) ${q.optA}</div>
+                        <div class="quiz-option" onclick="answerQuiz('${q.correct}', 'B')">ب) ${q.optB}</div>
+                    `;
+                    container.appendChild(card);
+                });
+            });
+        }
+
+        function answerQuiz(correct, selected) {
+            if(currentUser.role !== 'student') { alert("لطلاب فقط!"); return; }
+            if(selected === correct) {
+                alert("إجابة صحيحة! (+10 نقاط)");
+                db.ref(`rash_users/${currentUser.name}`).transaction(p => (p || 0) + 10);
+            } else { alert("إجابة خاطئة ❌"); }
+        }
+
+        function loadLeaderboard() {
+            db.ref('rash_users').orderByValue().on('value', (snapshot) => {
+                const container = document.getElementById('leaderboardList');
+                container.innerHTML = "";
+                const data = snapshot.val();
+                if(!data) { container.innerHTML = "<p>لا يوجد متفوقين بعد.</p>"; return; }
+                Object.entries(data).sort((a,b) => b[1]-a[1]).forEach(([name, pts], i) => {
+                    container.innerHTML += `<div class="leaderboard-item"><span>#${i+1} ${name}</span><span>💎 ${pts}</span></div>`;
+                });
+            });
+        }
+    </script>
+</body>
+</html>
